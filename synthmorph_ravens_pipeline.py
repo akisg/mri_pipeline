@@ -1,35 +1,63 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import numpy as np
+import os
+import io
+import surfa as sf
+import tensorflow as tf
+import voxelmorph as vxm
+import matplotlib.pyplot as plt
+import pandas as pd
+import os
+import nibabel as nib
+import numpy as np
+import SimpleITK as sitk
+
+
+
+# Read environment variable for Freesurfer Prefix on Cubic
+freesurfer_prefix = os.getenv('FREESURFERSIF', '')
+print(f"The value of $FREESURFERSIF is: {freesurfer_prefix}.")
+
 ### -- Input Images -- ###
+
+# Read environment variable for input directory
+input_dir = os.getenv('INPUT_DIR', '../inputs')
+print(f"The value of $INPUT_DIR is: {input_dir}.")
+
+# Read environment variable for output directory
+output_dir = os.getenv('OUTPUT_DIR', 'out_synth')
+print(f"The value of $OUTPUT_DIR is: {output_dir}.")
+
 
 # CSF Test Input Files and Template
 subject_nifti_paths = {
-    "subj1": "../inputs/csf_test/OAS30574_MR_d1917/OAS30574_MR_d1917_T1.nii.gz",
-    # "subj2": "../inputs/csf_test/OAS30597_MR_d3137/OAS30597_MR_d3137_T1.nii.gz",
-    # "subj3": "../inputs/csf_test/OAS31169_MR_d0620/OAS31169_MR_d0620_T1.nii.gz",
+    "subj1": f"{input_dir}/csf_test/OAS30574_MR_d1917/OAS30574_MR_d1917_T1.nii.gz",
+    # "subj2": f"{input_dir}/csf_test/OAS30597_MR_d3137/OAS30597_MR_d3137_T1.nii.gz",
+    # "subj3": f"{input_dir}/csf_test/OAS31169_MR_d0620/OAS31169_MR_d0620_T1.nii.gz",
 }
-template_nifti_path = "../inputs/csf_test/OAS30001_MR_d0129/OAS30001_MR_d0129_T1.nii.gz"
+template_nifti_path = f"{input_dir}/csf_test/OAS30001_MR_d0129/OAS30001_MR_d0129_T1.nii.gz"
 
 # Inverted Input Files and Template
 # subject_nifti_paths = {
-#     "subj1": "../inputs/inverted/in/subj1/subj1_T1_LPS.nii.gz",
-#     # "subj2": "../inputs/inverted/in/subj2/subj2_T1_LPS.nii.gz",
+#     "subj1": f"{input_dir}/inverted/in/subj1/subj1_T1_LPS.nii.gz",
+#     # "subj2": f"{input_dir}/inverted/in/subj2/subj2_T1_LPS.nii.gz",
 #     # Add more as needed
 # }
-# template_nifti_path = "../inputs/inverted/template/colin27_t1_tal_lin_INV.nii.gz"
+# template_nifti_path = f"{input_dir}/inverted/template/colin27_t1_tal_lin_INV.nii.gz"
 
 
 # Yuhan's Input Files and Template
 # subject_nifti_paths = {
-#     "subj1": "../inputs/mri_samples/T1/137_S_4227_2011-09-21_T1_LPS.nii.gz", # extremely high VN scan
-#     # "subj2": "../inputs/mri_samples/T1/013_S_4236_2011-10-13_T1_LPS.nii.gz", # extremely high VN scan
-#     # "subj3": "../inputs/mri_samples/T1/019_S_6635_2020-01-28_T1_LPS.nii.gz", # extremely small VN scan
-#     # "subj4": "../inputs/mri_samples/T1/072_S_4226_2012-10-12_T1_LPS.nii.gz", # extremely small VN scan
-#     # "subj5": "../inputs/mri_samples/T1/023_S_1247_2007-02-21_T1_LPS.nii.gz", # mean VN scan
-#     # "subj6": "../inputs/mri_samples/T1/027_S_0118_2008-02-23_T1_LPS.nii.gz", # mean VN scan
+#     "subj1": f"{input_dir}/mri_samples/T1/137_S_4227_2011-09-21_T1_LPS.nii.gz", # extremely high VN scan
+#     # "subj2": f"{input_dir}/mri_samples/T1/013_S_4236_2011-10-13_T1_LPS.nii.gz", # extremely high VN scan
+#     # "subj3": f"{input_dir}/mri_samples/T1/019_S_6635_2020-01-28_T1_LPS.nii.gz", # extremely small VN scan
+#     # "subj4": f"{input_dir}/mri_samples/T1/072_S_4226_2012-10-12_T1_LPS.nii.gz", # extremely small VN scan
+#     # "subj5": f"{input_dir}/mri_samples/T1/023_S_1247_2007-02-21_T1_LPS.nii.gz", # mean VN scan
+#     # "subj6": f"{input_dir}/mri_samples/T1/027_S_0118_2008-02-23_T1_LPS.nii.gz", # mean VN scan
 # }
-# template_nifti_path = "../inputs/mri_samples/template/BLSA_SPGR+MPRAGE_averagetemplate.nii.gz"
+# template_nifti_path = f"{input_dir}/mri_samples/template/BLSA_SPGR+MPRAGE_averagetemplate.nii.gz"
 
 ### -- Options -- ###
 # segmentation = 'fast' # Use Fast segmentation from the FSL installation
@@ -67,25 +95,6 @@ SHOW_IMAGES = False
 # get_ipython().system('pip show keras')
 
 
-import numpy as np
-import os
-import io
-import surfa as sf
-import tensorflow as tf
-import voxelmorph as vxm
-import matplotlib.pyplot as plt
-import pandas as pd
-import os
-import nibabel as nib
-import numpy as np
-import SimpleITK as sitk
-
-
-# Read environment variable for Freesurfer Prefix on Cubic
-freesurfer_prefix = os.getenv('FREESURFERSIF', '')
-print(f"The value of $FREESURFERSIF is: {freesurfer_prefix}.")
-
-
 # Helper functions. The shape has to be divisible by 16.
 # shape = (128, 128, 128)
 # shape = (160, 192, 160)
@@ -118,9 +127,9 @@ def show(x, title=None):
 
 # Helper function to get all paths for a subject
 def get_subject_paths(subj_id):
-    base = f"out_synth/{subj_id}/init/"
-    lin_reg = f"out_synth/{subj_id}/lin_reg/"
-    def_reg = f"out_synth/{subj_id}/def_reg/"
+    base = f"{output_dir}/{subj_id}/init/"
+    lin_reg = f"{output_dir}/{subj_id}/lin_reg/"
+    def_reg = f"{output_dir}/{subj_id}/def_reg/"
     return {
         "t1": base + f"{subj_id}_t1.nii.gz",
         "t1_seg": base + f"{subj_id}_t1_seg.nii.gz",
@@ -563,15 +572,15 @@ for subj_id in subject_nifti_paths.keys():
     # --- Input original NIfTI paths and preprocess (resize/reshape/resample) ---
     orig_subj_nii = subject_nifti_paths[subj_id]
     orig_template_nii = template_nifti_path
-    preproc_subj_nii = f"out_synth/{subj_id}/init/{subj_id}_t1.nii.gz"
-    preproc_subj_skull_stripped = f"out_synth/{subj_id}/init/{subj_id}_t1_skull_stripped.nii.gz"
-    preproc_template_nii = "out_synth/template/template_t1.nii.gz"
+    preproc_subj_nii = f"{output_dir}/{subj_id}/init/{subj_id}_t1.nii.gz"
+    preproc_subj_skull_stripped = f"{output_dir}/{subj_id}/init/{subj_id}_t1_skull_stripped.nii.gz"
+    preproc_template_nii = f"{output_dir}/template/template_t1.nii.gz"
 
     # Preprocess template image
     if not os.path.exists(preproc_template_nii):
         print("Preprocessing template image ...")
-        # template_vol = sf.load_volume(orig_template_nii).resize(voxsize=2).reshape(shape).reorient('LPS')
-        template_vol = sf.load_volume(orig_template_nii).reshape(shape).reorient('LPS')
+        template_vol = sf.load_volume(orig_template_nii).resize(voxsize=2).reshape(shape).reorient('LPS')
+        # template_vol = sf.load_volume(orig_template_nii).reshape(shape).reorient('LPS')
         # template_vol = sf.load_volume(orig_template_nii).reorient('LPS')
         os.makedirs(os.path.dirname(preproc_template_nii), exist_ok=True)
         template_vol.save(preproc_template_nii)
@@ -622,7 +631,7 @@ for subj_id in subject_nifti_paths.keys():
 
     if segmentation == 'fast':
         print(f"Performing Fast segmentation for {subj_id} ...")
-        out_seg = os.path.join(f"out_synth/{subj_id}/init/", f'{subj_id}_t1_seg.nii.gz')
+        out_seg = os.path.join(f"{output_dir}/{subj_id}/init/", f'{subj_id}_t1_seg.nii.gz')
 
         if not os.path.exists(out_seg):
             os.makedirs(os.path.dirname(matrix_filepath), exist_ok=True)
@@ -642,8 +651,8 @@ for subj_id in subject_nifti_paths.keys():
 
         # For each subject, segment both the template and the subject's T1 image
         seg_targets = [
-            (f"template", template_path, f"out_synth/template/"),
-            (subj_id, subj_path, f"out_synth/{subj_id}/init/")
+            (f"template", template_path, f"{output_dir}/template/"),
+            (subj_id, subj_path, f"{output_dir}/{subj_id}/init/")
         ]
         for cur_id, cur_img, out_base in seg_targets:
             # Segment image
@@ -661,7 +670,7 @@ for subj_id in subject_nifti_paths.keys():
                 print(f'Out file exists, skip: {out_seg}')
 
     # Now use the subject's segmentation output for downstream steps
-    out_seg = os.path.join(f"out_synth/{subj_id}/init/", f"{subj_id}_t1_seg.nii.gz")
+    out_seg = os.path.join(f"{output_dir}/{subj_id}/init/", f"{subj_id}_t1_seg.nii.gz")
     t1_seg = sf.load_volume(out_seg).reshape(shape).reorient('LPS')
     if SHOW_IMAGES:
         show(t1_seg, title=f'Segmented T1-weighted MRI ({subj_id})')
@@ -862,7 +871,7 @@ for subj_id in subject_nifti_paths.keys():
 
         # --- Deformable Registration of Segmented Image ---
         # Define the template segmentation path based on the segmentation step
-        template_seg_path = os.path.join("out_synth/template/", "template_t1_seg.nii.gz")
+        template_seg_path = os.path.join(f"{output_dir}/template/", "template_t1_seg.nii.gz")
         t1_fixed_seg = sf.load_volume(template_seg_path).reshape(shape).reorient('LPS')
         t1_moving_seg = sf.load_volume(seg_affine_moved).resample_like(t1_fixed_seg)
         before = normalize(t1_moving_seg) - normalize(t1_fixed_seg)
